@@ -1,106 +1,97 @@
 package com.iktpreobuka.project.controllers;
 
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.iktpreobuka.project.entities.CategoryEntity;
+import com.iktpreobuka.project.repositories.CategoryRepository;
 
 @RestController
-@RequestMapping("/project/categories")
+@RequestMapping("/api/v1/project/categories")
 public class CategoryController {
-
-
-	// 2.2
-	private List<CategoryEntity> getDB() {
-		
-		CategoryEntity c1 = new CategoryEntity(1, "music", "description 1");
-		CategoryEntity c2 = new CategoryEntity(2, "food", "description 2");
-		CategoryEntity c3 = new CategoryEntity(3, "entertainment", "description 3");
-		
-		return Stream.of(c1, c2, c3).collect(Collectors.toList());
-	}
 	
 	
-	// 2.3
-	@RequestMapping(method = RequestMethod.GET)
-	public List<CategoryEntity> getAll() {;
-		return getDB();
-	}
+	@Autowired
+	private CategoryRepository categoryRepository;
 	
 	
-	// 2.4
+	// =-=-=-= POST =-=-=-=
+	
+	
+	// T2 2.4
 	@RequestMapping(method = RequestMethod.POST)
-	public CategoryEntity add(@RequestBody CategoryEntity c) {
+	public CategoryEntity add(@RequestBody ObjectNode objectNode) {
 		
-		/*
-		 * {
-		 *	    "id": 4,
-		 *	    "name": "life",
-		 *	    "description": "description 4"
-		 *	}
-		 */
+		CategoryEntity newCategory = new CategoryEntity(
+				objectNode.get("name").asText(),
+				objectNode.get("description").asText()
+				);
 		
-		CategoryEntity c0 = new CategoryEntity();
-		c0.setId(c.getId());
-		c0.setName(c.getName());
-		c0.setDescription(c.getDescription());
+		categoryRepository.save(newCategory);
 		
-		getDB().add(c0);
-		
-		return c0;
+		return newCategory;
 	}
 	
-	
-	// 2.5
-	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
-	public CategoryEntity changeCategory(@PathVariable Integer id, @RequestBody CategoryEntity cat) {
-		
-		for (CategoryEntity c : getDB())
-			if (c.getId().equals(cat.getId())) {
-				
-				if (cat.getName() != null)
-					c.setName(cat.getName());
-				
-				if (cat.getDescription() != null)
-					c.setDescription(cat.getDescription());
-				
-				return c;
-			}
-		
-		return null;
-	}
-	
-	
-	// 2.6
-	@RequestMapping(method = RequestMethod.DELETE, value ="/{id}")
-	public CategoryEntity delete(@PathVariable Integer id) {
 
-		CategoryEntity c = getDB().stream().filter(cat -> cat.getId().equals(id)).findFirst().orElse(null);
-		
-		if (c == null) {
-			return null;
-		} else {
-			getDB().remove(c);
-			return c;
-		}
+	// =-=-=-= GET =-=-=-=
+	
+	
+	// T2 2.3
+	@RequestMapping(method = RequestMethod.GET)
+	public List<CategoryEntity> getAll() {
+		return (List<CategoryEntity>) categoryRepository.findAll();
 	}
 	
 	
-	// 2.7
+	// T2 2.7
 	@RequestMapping(method = RequestMethod.GET, value ="/{id}")
 	public CategoryEntity getById(@PathVariable Integer id) {
 		
-		for (CategoryEntity c : getDB())
-			if (c.getId().equals(id))
-				return c;
+		return categoryRepository.findById(id).orElse(null);
+	}
+	
+	
+	// =-=-=-= PUT =-=-=-=
+	
+	
+	// T2 2.5
+	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
+	public CategoryEntity changeCategory(@PathVariable Integer id, @RequestBody ObjectNode objectNode) {
 		
-		return null;
+		CategoryEntity category = categoryRepository.findById(id).orElse(null);
+		if (category == null) return null;
+		
+		String name 		= objectNode.get("name").asText();
+		String description 	= objectNode.get("description").asText();
+		
+		if (name != null) 			category.setName(name);
+		if (description != null) 	category.setDescription(description);
+		
+		categoryRepository.save(category);
+		
+		return category;
+	}
+	
+	
+	// =-=-=-= DELETE =-=-=-=
+	
+	
+	// T2 2.6
+	@RequestMapping(method = RequestMethod.DELETE, value = "/{id}")
+	public CategoryEntity delete(@PathVariable Integer id) {
+		
+		CategoryEntity category = categoryRepository.findById(id).orElse(null);
+		if (category == null) return null;
+		
+		categoryRepository.delete(category);
+		
+		return category;
 	}
 }

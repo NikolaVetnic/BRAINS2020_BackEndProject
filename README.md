@@ -1,2 +1,3 @@
 # BRAINS2020_BackEndProject
-Read me.
+
+Uradjeno do T4, zakljucno sa T3.

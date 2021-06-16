@@ -1,4 +1,4 @@
-package com.iktpreobuka.project.entities;
+package com.iktpreobuka.project.enums;
 
 public enum OfferType {
 
