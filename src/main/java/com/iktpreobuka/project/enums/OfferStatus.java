@@ -1,6 +1,6 @@
 package com.iktpreobuka.project.enums;
 
-public enum OfferType {
+public enum OfferStatus {
 
 	WAIT_FOR_APPROVING("wait"),
 	APPROVED("approved"),
@@ -9,12 +9,12 @@ public enum OfferType {
 	
 	private String type;
 	
-	private OfferType(String type) {
+	private OfferStatus(String type) {
 		this.type = type;
 	}
 	
-	public static OfferType fromString(String t) {
-		for (OfferType ot : OfferType.values())
+	public static OfferStatus fromString(String t) {
+		for (OfferStatus ot : OfferStatus.values())
 			if (ot.type.equalsIgnoreCase(t))
 				return ot;
 		

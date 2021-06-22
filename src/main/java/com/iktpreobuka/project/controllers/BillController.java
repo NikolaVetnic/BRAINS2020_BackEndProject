@@ -4,12 +4,18 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,10 +23,12 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.iktpreobuka.project.controllers.dto.BillRegisterDTO;
 import com.iktpreobuka.project.entities.BillEntity;
 import com.iktpreobuka.project.entities.CategoryEntity;
 import com.iktpreobuka.project.entities.OfferEntity;
 import com.iktpreobuka.project.entities.UserEntity;
+import com.iktpreobuka.project.enums.Role;
 import com.iktpreobuka.project.repositories.BillRepository;
 import com.iktpreobuka.project.repositories.CategoryRepository;
 import com.iktpreobuka.project.repositories.OfferRepository;
@@ -51,18 +59,62 @@ public class BillController {
 	private CategoryRepository categoryRepository;
 	
 	
+	private static final String[] ERRORS = { 
+			"Offer not found.", 
+			"User not found." };
+	
+	
 	// =-=-=-= POST =-=-=-=
 	
 	
-	// T3 3.6 (izmena u T3 5.1)
+	// T6 1.4, 1.5
+	@RequestMapping(method = RequestMethod.POST)
+	public ResponseEntity<?> createBill(@Valid @RequestBody BillRegisterDTO billDTO, BindingResult result) {
+		
+		if (result.hasErrors())
+			return new ResponseEntity<>(createErrorMessage(result), HttpStatus.BAD_REQUEST);
+		
+		BillEntity newBill = new BillEntity();
+		
+		newBill.setBillCreated(billDTO.getBillCreated());
+		newBill.setPaymentCanceled(false);
+		newBill.setPaymentMade(false);
+		
+		billRepository.save(newBill);
+		
+		return new ResponseEntity<>(newBill, HttpStatus.CREATED);
+	}
+	
+	
+	// T6 1.4
 	@RequestMapping(method = RequestMethod.POST, value = "/{offerId}/buyer/{buyerId}")
-	public BillEntity add(
-			@PathVariable Integer offerId, @PathVariable Integer buyerId, @RequestBody ObjectNode objectNode) {
+	public ResponseEntity<?> createBillWithOfferAndBuyer(
+			@PathVariable Integer offerId, @PathVariable Integer buyerId, @Valid @RequestBody BillRegisterDTO billDTO, 
+			BindingResult result) {
+		
+		if (result.hasErrors())
+			return new ResponseEntity<>(createErrorMessage(result), HttpStatus.BAD_REQUEST);
 		
 		OfferEntity offer = offerRepository.findById(offerId).orElse(null);
 		UserEntity user = userRepository.findById(buyerId).orElse(null);
 		
-		if (offer == null || user == null) return null;
+		// ??? mozda se moze automatizovati ???
+		if (offer == null || user == null) {
+			
+			StringBuilder sb = new StringBuilder();
+			
+			if (offer == null) {
+				sb.append(ERRORS[0]);
+				sb.append(" ");
+			}
+			
+			if (user == null) {
+				sb.append(ERRORS[1]);
+				sb.append(" ");
+			}
+			
+			return new ResponseEntity<>(sb.toString() + " " + createErrorMessage(result), HttpStatus.BAD_REQUEST);
+		}
 		
 		offer.setNumAvailable(offer.getNumAvailable() - 1);
 		offer.setNumBought(offer.getNumBought() + 1);
@@ -70,17 +122,23 @@ public class BillController {
 		// ??? da li je neophodno ???
 		offerRepository.save(offer);
 		
-		BillEntity bill = new BillEntity();
-		bill.setBillCreated(Date.valueOf(LocalDate.now()));
-		bill.setPaymentCanceled(objectNode.get("canceled").textValue().equalsIgnoreCase("yes") ? true : false);
-		bill.setPaymentMade(objectNode.get("made").textValue().equalsIgnoreCase("yes") ? true : false);
+		BillEntity newBill = new BillEntity();
 		
-		bill.setUser(user);
-		bill.setOffer(offer);
+		newBill.setBillCreated(billDTO.getBillCreated());
+		newBill.setPaymentCanceled(false);
+		newBill.setPaymentMade(false);
 		
-		billRepository.save(bill);
+		newBill.setUser(user);
+		newBill.setOffer(offer);
 		
-		return bill;
+		billRepository.save(newBill);
+		
+		return new ResponseEntity<>(newBill, HttpStatus.CREATED);
+	}
+	
+	
+	private String createErrorMessage(BindingResult result) {
+		return result.getAllErrors().stream().map(ObjectError::getDefaultMessage).collect(Collectors.joining(" "));
 	}
 	
 	
@@ -152,6 +210,7 @@ public class BillController {
 	
 	
 	// T3 3.6 (izmena u T3 5.2)
+	// TODO azurirati sve PUT metode da budu u skladu sa novim POST metodima
 	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
 	public BillEntity changeBill(@PathVariable Integer id, @RequestBody ObjectNode objectNode) {
 		

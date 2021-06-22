@@ -1,6 +1,6 @@
 package com.iktpreobuka.project.entities;
 
-import java.util.Date;
+import java.time.LocalDate;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -21,7 +21,7 @@ public class VoucherEntity {
 	protected Integer id;
 	
 	@Column(nullable = false)
-	protected Date expirationDate;
+	protected LocalDate expirationDate;
 	
 	@Column(nullable = false)
 	protected boolean isUsed;
@@ -41,15 +41,15 @@ public class VoucherEntity {
 	public VoucherEntity() { }
 
 
-	public Integer getId() 			{ return id; 				}
-	public Date getExpirationDate() { return expirationDate; 	}
-	public boolean isUsed() 		{ return isUsed; 			}
-	public OfferEntity getOffer() 	{ return offer; 			}
-	public UserEntity getUser() 	{ return user; 				}
+	public Integer getId() 					{ return id; 				}
+	public LocalDate getExpirationDate() 	{ return expirationDate; 	}
+	public boolean isUsed() 				{ return isUsed; 			}
+	public OfferEntity getOffer() 			{ return offer; 			}
+	public UserEntity getUser() 			{ return user; 				}
 
 
-	public void setExpirationDate(Date expirationDate) 	{ this.expirationDate = expirationDate; }
-	public void setUsed(boolean isUsed) 				{ this.isUsed = isUsed; 				}
-	public void setOffer(OfferEntity offer) 			{ this.offer = offer; 					}
-	public void setUser(UserEntity user) 				{ this.user = user; 					}	
+	public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }
+	public void setUsed(boolean isUsed) 					{ this.isUsed = isUsed; 				}
+	public void setOffer(OfferEntity offer) 				{ this.offer = offer; 					}
+	public void setUser(UserEntity user) 					{ this.user = user; 					}	
 }

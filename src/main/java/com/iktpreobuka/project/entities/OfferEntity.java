@@ -1,7 +1,7 @@
 package com.iktpreobuka.project.entities;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import javax.persistence.CascadeType;
@@ -17,9 +17,12 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Version;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.iktpreobuka.project.enums.OfferType;
+import com.iktpreobuka.project.enums.OfferStatus;
 
 @Entity
 public class OfferEntity {
@@ -30,35 +33,43 @@ public class OfferEntity {
 	protected Integer id;
 	
 	@Column(nullable = false)
+	@NotBlank(message = "Name must be provided.")
 	protected String name;
 	
 	@Column(nullable = false)
+	@NotBlank(message = "Description must be provided.")
+	@Size(min=5, max=20, message = "Description name must be between {min} and {max} characters long.")
 	protected String description;
 	
 	@Column(nullable = false)
-	protected Date created;
+	protected LocalDate created;
 	
 	@Column(nullable = false)
-	protected Date expires;
+	protected LocalDate expires;
 	
 	@Column(nullable = false)
+	@Min(value=1, message = "Regular price must be greater than 1.")
 	protected Double regPrice;
 	
 	@Column(nullable = false)
+	@Min(value=1, message = "Action price must be greater than 1.")
 	protected Double actPrice;
 	
 	@Column(nullable = false)
+	@NotBlank(message = "Image path must be provided.")
 	protected String imgPath;
 	
 	@Column(nullable = false)
+	@Min(value=1, message = "Number available must be greater than 0.")
 	protected Integer numAvailable;
 	
 	@Column(nullable = false)
+	@Min(value=0, message = "Number bought must be equal to or greater than 0.")
 	protected Integer numBought;
 
 	@Column(nullable = false)
 	@Enumerated(EnumType.STRING)
-	protected OfferType type;
+	protected OfferStatus status;
 	
 	// @JsonIgnore dodajemo samo kod @ManyToOne sa strane lista!
 	// insertable=false, updatable=false - moze praviti problem sa @JsonIgnore
@@ -87,32 +98,32 @@ public class OfferEntity {
 	public OfferEntity() { }
 
 
-	public OfferEntity(String name, String desc, Date created, Date expires, double regPrice, double actPrice, String imgPath,
-			int numAvailable, int numBought, OfferType type) {
-		this.name = name;
-		this.description = desc;
-		this.created = created;
-		this.expires = expires;
-		this.regPrice = regPrice;
-		this.actPrice = actPrice;
-		this.imgPath = imgPath;
-		this.numAvailable = numAvailable;
-		this.numBought = numBought;
-		this.type = type;
-	}
+//	public OfferEntity(String name, String desc, LocalDate created, LocalDate expires, double regPrice, double actPrice, String imgPath,
+//			int numAvailable, int numBought, OfferStatus status) {
+//		this.name = name;
+//		this.description = desc;
+//		this.created = created;
+//		this.expires = expires;
+//		this.regPrice = regPrice;
+//		this.actPrice = actPrice;
+//		this.imgPath = imgPath;
+//		this.numAvailable = numAvailable;
+//		this.numBought = numBought;
+//		this.status = status;
+//	}
 
 
 	public Integer getId() 						{ return id; 			}
 	public String getName() 					{ return name; 			}
 	public String getDesc() 					{ return description; 	}
-	public Date getCreated() 					{ return created; 		}
-	public Date getExpires() 					{ return expires; 		}
+	public LocalDate getCreated() 				{ return created; 		}
+	public LocalDate getExpires() 				{ return expires; 		}
 	public Double getRegPrice() 				{ return regPrice; 		}
 	public Double getActPrice() 				{ return actPrice; 		}
 	public String getImgPath() 					{ return imgPath; 		}
 	public Integer getNumAvailable() 			{ return numAvailable; 	}
 	public Integer getNumBought() 				{ return numBought; 	} 
-	public OfferType getType() 					{ return type; 			}
+	public OfferStatus getStatus() 				{ return status; 		}
 	public CategoryEntity getCategory() 		{ return category; 		}
 	public UserEntity getUser() 				{ return user; 			}
 	public String getDescription() 				{ return description; 	}
@@ -120,20 +131,22 @@ public class OfferEntity {
 	public List<VoucherEntity> getVouchers() 	{ return vouchers; 		}
 
 	
-	public void setId(Integer id)							{ this.id = id; 					}
 	public void setName(String name) 						{ this.name = name; 				}
 	public void setDesc(String desc) 						{ this.description = desc; 			}
-	public void setCreated(Date created) 					{ this.created = created; 			}
-	public void setExpires(Date expires) 					{ this.expires = expires; 			}
+	public void setCreated(LocalDate created) 				{ this.created = created; 			}
+	public void setExpires(LocalDate expires) 				{ this.expires = expires; 			}
 	public void setRegPrice(Double regPrice) 				{ this.regPrice = regPrice; 		}
 	public void setActPrice(Double actPrice) 				{ this.actPrice = actPrice; 		}
 	public void setImgPath(String imgPath) 					{ this.imgPath = imgPath; 			}
 	public void setNumAvailable(Integer numAvailable) 		{ this.numAvailable = numAvailable; }
 	public void setNumBought(Integer numBought)				{ this.numBought = numBought; 		}
-	public void setType(OfferType type) 					{ this.type = type; 				}
+	public void setStatus(OfferStatus status) 				{ this.status = status; 			}
 	public void setCategory(CategoryEntity category) 		{ this.category = category; 		}
 	public void setUser(UserEntity user) 					{ this.user = user; 				}
 	public void setDescription(String description) 			{ this.description = description; 	}
-	public void setBills(List<BillEntity> bills) 			{ this.bills = bills; 				}
-	public void setVouchers(List<VoucherEntity> vouchers) 	{ this.vouchers = vouchers; 		}
+//	public void setBills(List<BillEntity> bills) 			{ this.bills = bills; 				}
+//	public void setVouchers(List<VoucherEntity> vouchers) 	{ this.vouchers = vouchers; 		}
+	
+	public void addBills(BillEntity bill) { this.bills.add(bill); }
+	public void addVouchers(VoucherEntity voucher) { this.vouchers.add(voucher); }
 }

@@ -1,8 +1,17 @@
 package com.iktpreobuka.project.controllers;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.iktpreobuka.project.entities.UserEntity;
 import com.iktpreobuka.project.enums.Role;
 import com.iktpreobuka.project.repositories.UserRepository;
+import com.iktpreobuka.project.utils.UserCustomValidator;
 
 @RestController
 @RequestMapping("/api/v1/project/users")
@@ -24,24 +34,34 @@ public class UserController {
 	private UserRepository userRepository;
 	
 	
+	@Autowired
+	private UserCustomValidator userCustomValidator;
+	
+	
+	@InitBinder
+	protected void initBinder(final WebDataBinder binder) {
+		binder.addValidators(userCustomValidator);
+	}
+	
+	
 	// =-=-=-= POST =-=-=-=
 	
 	
-	// T2 1.5
+	// T6 1.1
 	@RequestMapping(method = RequestMethod.POST)
-	public UserEntity add(@RequestBody ObjectNode objectNode) {
+	public ResponseEntity<?> createUser(@Valid @RequestBody UserEntity user, BindingResult result) {
 		
-		UserEntity newUser = new UserEntity(
-				objectNode.get("firstName").asText(), 
-				objectNode.get("lastName").asText(), 
-				objectNode.get("username").asText(), 
-				objectNode.get("password").asText(), 
-				objectNode.get("email").asText(), 
-				Role.fromString(objectNode.get("userRole").asText()));
+		if (result.hasErrors())
+			return new ResponseEntity<>(createErrorMessage(result), HttpStatus.BAD_REQUEST);
 		
-		userRepository.save(newUser);
+		userRepository.save(user);
 		
-		return newUser;
+		return new ResponseEntity<>(user, HttpStatus.CREATED);
+	}
+	
+	
+	private String createErrorMessage(BindingResult result) {
+		return result.getAllErrors().stream().map(ObjectError::getDefaultMessage).collect(Collectors.joining(" "));
 	}
 	
 	

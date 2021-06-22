@@ -12,6 +12,8 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 import javax.persistence.Version;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -24,9 +26,12 @@ public class CategoryEntity {
 	protected Integer id;
 	
 	@Column(nullable = false)
+	@NotBlank(message = "Category name must be provided.")
 	protected String name;
 	
 	@Column(nullable = false)
+	@NotBlank(message = "Category description must be provided.")
+	@Size(max=30, message = "Category description must be under {max} characters long.")
 	protected String description;
 	
 	@JsonIgnore

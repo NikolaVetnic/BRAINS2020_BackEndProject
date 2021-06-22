@@ -1,11 +1,16 @@
 	package com.iktpreobuka.project.controllers;
 
-import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,12 +22,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.iktpreobuka.project.entities.CategoryEntity;
 import com.iktpreobuka.project.entities.OfferEntity;
 import com.iktpreobuka.project.entities.UserEntity;
-import com.iktpreobuka.project.enums.OfferType;
+import com.iktpreobuka.project.enums.OfferStatus;
 import com.iktpreobuka.project.enums.Role;
 import com.iktpreobuka.project.repositories.CategoryRepository;
 import com.iktpreobuka.project.repositories.OfferRepository;
 import com.iktpreobuka.project.repositories.UserRepository;
-import com.iktpreobuka.project.utils.DateConverter;
 
 @RestController
 @RequestMapping("/api/v1/project/offers")
@@ -44,33 +48,21 @@ public class OfferController {
 	// =-=-=-= POST =-=-=-=
 	
 	
-	// T3 2.3
+	// T6 1.3
 	@RequestMapping(method = RequestMethod.POST, value = "/{categoryId}/seller/{sellerId}")
-	public OfferEntity add(@PathVariable Integer categoryId, @PathVariable Integer sellerId, @RequestBody ObjectNode objectNode) {
+	public ResponseEntity<?> createOffer(@Valid @RequestBody OfferEntity offer, BindingResult result) {
 		
-		OfferEntity newOffer = new OfferEntity(
-				objectNode.get("name").asText(), 
-				objectNode.get("description").asText(), 
-				Date.valueOf(LocalDate.now()),
-				Date.valueOf(LocalDate.now().plusDays(10)),
-				Double.parseDouble(objectNode.get("regPrice").asText().trim()),
-				Double.parseDouble(objectNode.get("actPrice").asText().trim()),
-				objectNode.get("imgPath").asText(), 
-				Integer.parseInt(objectNode.get("numAvailable").asText().trim()),
-				Integer.parseInt(objectNode.get("numBought").asText().trim()),
-				OfferType.fromString(objectNode.get("offerType").asText()));
+		if (result.hasErrors())
+			return new ResponseEntity<>(createErrorMessage(result), HttpStatus.BAD_REQUEST);
 		
-		UserEntity user = userRepository.findById(sellerId).orElse(null);
-		CategoryEntity category = categoryRepository.findById(categoryId).orElse(null);
-
-		if (user == null || user.getUserRole() != Role.ROLE_SELLER || category == null) return null;
+		offerRepository.save(offer);
 		
-		newOffer.setUser(user);
-		newOffer.setCategory(category);
-		
-		offerRepository.save(newOffer);
-		
-		return newOffer;
+		return new ResponseEntity<>(offer, HttpStatus.CREATED);
+	}
+	
+	
+	private String createErrorMessage(BindingResult result) {
+		return result.getAllErrors().stream().map(ObjectError::getDefaultMessage).collect(Collectors.joining(" "));
 	}
 	
 	
@@ -120,14 +112,14 @@ public class OfferController {
 		
 		String name 		= objectNode.get("name").asText(); 
 		String desc 		= objectNode.get("description").asText();
-		Date created 		= Date.valueOf(objectNode.get("created").asText());
-		Date expires 		= Date.valueOf(objectNode.get("expires").asText());
+		LocalDate created 	= LocalDate.parse(objectNode.get("created").asText());
+		LocalDate expires 	= LocalDate.parse(objectNode.get("expires").asText());
 		double regPrice 	= Double.parseDouble(objectNode.get("regPrice").asText().trim());
 		double actPrice 	= Double.parseDouble(objectNode.get("actPrice").asText().trim());
 		String imgPath 		= objectNode.get("imgPath").asText();
 		int numAvailable 	= Integer.parseInt(objectNode.get("numAvailable").asText().trim());
 		int numBought 		= Integer.parseInt(objectNode.get("numBought").asText().trim());
-		OfferType type 		= OfferType.fromString(objectNode.get("offerType").asText().trim());
+		OfferStatus status 	= OfferStatus.fromString(objectNode.get("status").asText().trim());
 		
 		if (name != null) 		offer.setName(name);
 		if (desc != null) 		offer.setDesc(desc);
@@ -138,7 +130,7 @@ public class OfferController {
 		if (imgPath != null) 	offer.setImgPath(imgPath);
 								offer.setNumAvailable(numAvailable);
 								offer.setNumBought(numBought);
-		if (type != null) 		offer.setType(type);
+		if (status != null) 	offer.setStatus(status);
 		
 		offer.setCategory(category);
 		offer.setUser(seller);
@@ -156,7 +148,7 @@ public class OfferController {
 		OfferEntity offer = offerRepository.findById(id).orElse(null);
 		if (offer == null) return null;
 		
-		offer.setType(OfferType.fromString(type));
+		offer.setStatus(OfferStatus.fromString(type));
 		offerRepository.save(offer);
 		
 		return offer;

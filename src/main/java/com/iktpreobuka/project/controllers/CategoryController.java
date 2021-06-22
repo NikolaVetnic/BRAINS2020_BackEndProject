@@ -1,8 +1,15 @@
 package com.iktpreobuka.project.controllers;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,19 +32,37 @@ public class CategoryController {
 	// =-=-=-= POST =-=-=-=
 	
 	
-	// T2 2.4
+	// T6 1.2
 	@RequestMapping(method = RequestMethod.POST)
-	public CategoryEntity add(@RequestBody ObjectNode objectNode) {
+	public ResponseEntity<?> createCategory(@Valid @RequestBody CategoryEntity category, BindingResult result) {
 		
-		CategoryEntity newCategory = new CategoryEntity(
-				objectNode.get("name").asText(),
-				objectNode.get("description").asText()
-				);
+		if (result.hasErrors())
+			return new ResponseEntity<>(createErrorMessage(result), HttpStatus.BAD_REQUEST);
 		
-		categoryRepository.save(newCategory);
+		categoryRepository.save(category);
 		
-		return newCategory;
+		return new ResponseEntity<>(category, HttpStatus.CREATED);
 	}
+	
+	
+	private String createErrorMessage(BindingResult result) {
+		return result.getAllErrors().stream().map(ObjectError::getDefaultMessage).collect(Collectors.joining(" "));
+	}
+	
+	
+//	// T2 2.4
+//	@RequestMapping(method = RequestMethod.POST)
+//	public CategoryEntity add(@RequestBody ObjectNode objectNode) {
+//		
+//		CategoryEntity newCategory = new CategoryEntity(
+//				objectNode.get("name").asText(),
+//				objectNode.get("description").asText()
+//				);
+//		
+//		categoryRepository.save(newCategory);
+//		
+//		return newCategory;
+//	}
 	
 
 	// =-=-=-= GET =-=-=-=

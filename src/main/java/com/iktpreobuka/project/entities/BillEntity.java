@@ -1,11 +1,11 @@
 package com.iktpreobuka.project.entities;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -27,7 +27,7 @@ public class BillEntity {
 	protected Boolean paymentCanceled;
 	
 	@Column(nullable = false)
-	protected Date billCreated;
+	protected LocalDate billCreated;
 	
 	@Version
 	private Integer version;
@@ -47,7 +47,7 @@ public class BillEntity {
 	public Integer getId() 				{ return id; 				}
 	public Boolean getPaymentMade() 	{ return paymentMade; 		}
 	public Boolean getPaymentCanceled() { return paymentCanceled; 	}
-	public Date getBillCreated() 		{ return billCreated; 		}
+	public LocalDate getBillCreated() 	{ return billCreated; 		}
 	public Integer getVersion() 		{ return version; 			}	
 	public OfferEntity getOffer() 		{ return offer; 			}
 	public UserEntity getUser() 		{ return user; 				}
@@ -55,7 +55,7 @@ public class BillEntity {
 
 	public void setPaymentMade(Boolean paymentMade) 		{ this.paymentMade = paymentMade; 			}
 	public void setPaymentCanceled(Boolean paymentCanceled) { this.paymentCanceled = paymentCanceled; 	}
-	public void setBillCreated(Date billCreated) 			{ this.billCreated = billCreated; 			}
+	public void setBillCreated(LocalDate billCreated) 		{ this.billCreated = billCreated; 			}
 	public void setOffer(OfferEntity offer) 				{ this.offer = offer; 						}
 	public void setUser(UserEntity user) 					{ this.user = user; 						}
 }
