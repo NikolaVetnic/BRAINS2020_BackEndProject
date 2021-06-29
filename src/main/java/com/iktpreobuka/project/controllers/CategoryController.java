@@ -16,9 +16,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.iktpreobuka.project.controllers.util.RESTError;
+import com.iktpreobuka.project.entities.BillEntity;
 import com.iktpreobuka.project.entities.CategoryEntity;
+import com.iktpreobuka.project.entities.UserEntity;
 import com.iktpreobuka.project.repositories.CategoryRepository;
+
+import security.Views;
 
 @RestController
 @RequestMapping("/api/v1/project/categories")
@@ -49,37 +55,42 @@ public class CategoryController {
 		return result.getAllErrors().stream().map(ObjectError::getDefaultMessage).collect(Collectors.joining(" "));
 	}
 	
-	
-//	// T2 2.4
-//	@RequestMapping(method = RequestMethod.POST)
-//	public CategoryEntity add(@RequestBody ObjectNode objectNode) {
-//		
-//		CategoryEntity newCategory = new CategoryEntity(
-//				objectNode.get("name").asText(),
-//				objectNode.get("description").asText()
-//				);
-//		
-//		categoryRepository.save(newCategory);
-//		
-//		return newCategory;
-//	}
-	
 
 	// =-=-=-= GET =-=-=-=
 	
 	
-	// T2 2.3
-	@RequestMapping(method = RequestMethod.GET)
-	public List<CategoryEntity> getAll() {
-		return (List<CategoryEntity>) categoryRepository.findAll();
+	// T6 1.5, 1.6, 1.7, 1.8
+	@RequestMapping(method = RequestMethod.GET, value = "/")
+	public ResponseEntity<?> getAll() {
+		return new ResponseEntity<List<CategoryEntity>>((List<CategoryEntity>) categoryRepository.findAll(), HttpStatus.OK);
 	}
 	
 	
-	// T2 2.7
+	// T6 1.5, 1.6, 1.7, 1.8
+	@JsonView(Views.Public.class)
+	@RequestMapping(method = RequestMethod.GET, path = "/public")
+	public ResponseEntity<?> getAllPublic() {
+		return new ResponseEntity<List<CategoryEntity>>((List<CategoryEntity>) categoryRepository.findAll(), HttpStatus.OK);
+	}
+	
+	
+	// T2 2.7 (izmena u T6 2.2)
 	@RequestMapping(method = RequestMethod.GET, value ="/{id}")
-	public CategoryEntity getById(@PathVariable Integer id) {
+	public ResponseEntity<?> getById(@PathVariable Integer id) {
 		
-		return categoryRepository.findById(id).orElse(null);
+		try {
+			
+			CategoryEntity category = categoryRepository.findById(id).orElse(null);
+			
+			return category == null ? 
+					new ResponseEntity<RESTError>		(new RESTError(1, "Category not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<CategoryEntity>	(category, 									HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 	
 	
@@ -87,6 +98,8 @@ public class CategoryController {
 	
 	
 	// T2 2.5
+	// TODO azurirati sve PUT metode da budu u skladu sa novim POST metodima
+	// TODO dodati ResponseEntity
 	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
 	public CategoryEntity changeCategory(@PathVariable Integer id, @RequestBody ObjectNode objectNode) {
 		
@@ -108,15 +121,24 @@ public class CategoryController {
 	// =-=-=-= DELETE =-=-=-=
 	
 	
-	// T2 2.6
+	// T2 2.6 (izmena u T6 2.2)
 	@RequestMapping(method = RequestMethod.DELETE, value = "/{id}")
-	public CategoryEntity delete(@PathVariable Integer id) {
+	public ResponseEntity<?> delete(@PathVariable Integer id) {
 		
-		CategoryEntity category = categoryRepository.findById(id).orElse(null);
-		if (category == null) return null;
-		
-		categoryRepository.delete(category);
-		
-		return category;
+		try {
+			
+			CategoryEntity category = categoryRepository.findById(id).orElse(null);
+			
+			categoryRepository.delete(category);
+
+			return category == null ? 
+					new ResponseEntity<RESTError>		(new RESTError(1, "Category not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<CategoryEntity>	(category, 									HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 }

@@ -4,6 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.Query;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,19 +21,28 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.iktpreobuka.project.controllers.util.RESTError;
+import com.iktpreobuka.project.entities.BillEntity;
 import com.iktpreobuka.project.entities.CategoryEntity;
 import com.iktpreobuka.project.entities.OfferEntity;
 import com.iktpreobuka.project.entities.UserEntity;
-import com.iktpreobuka.project.enums.OfferStatus;
-import com.iktpreobuka.project.enums.Role;
+import com.iktpreobuka.project.entities.enums.OfferStatus;
+import com.iktpreobuka.project.entities.enums.Role;
 import com.iktpreobuka.project.repositories.CategoryRepository;
 import com.iktpreobuka.project.repositories.OfferRepository;
 import com.iktpreobuka.project.repositories.UserRepository;
 
+import security.Views;
+
 @RestController
 @RequestMapping("/api/v1/project/offers")
 public class OfferController {
+	
+	
+	@PersistenceContext
+	private EntityManager em;
 
 	
 	@Autowired
@@ -69,31 +81,68 @@ public class OfferController {
 	// =-=-=-= GET =-=-=-=
 	
 	
-	// T2 3.3
-	@RequestMapping(method = RequestMethod.GET)
-	public List<OfferEntity> getAllOffers() {
-		return (List<OfferEntity>) offerRepository.findAll();
+	// T6 1.5, 1.6, 1.7, 1.8
+	@RequestMapping(method = RequestMethod.GET, value = "/")
+	public ResponseEntity<?> getAll() {
+		return new ResponseEntity<List<OfferEntity>>((List<OfferEntity>) offerRepository.findAll(), HttpStatus.OK);
 	}
 	
 	
-	// T2 3.7
+	// T6 1.5, 1.6, 1.7, 1.8
+	@JsonView(Views.Public.class)
+	@RequestMapping(method = RequestMethod.GET, path = "/public")
+	public ResponseEntity<?> getAllPublic() {
+		return new ResponseEntity<List<OfferEntity>>((List<OfferEntity>) offerRepository.findAll(), HttpStatus.OK);
+	}
+	
+	
+	// T2 3.7 (izmena u T6 2.2)
 	@RequestMapping(method = RequestMethod.GET, value ="/{id}")
-	public OfferEntity getById(@PathVariable Integer id) {
+	public ResponseEntity<?> getById(@PathVariable Integer id) {
 		
-		return offerRepository.findById(id).orElse(null);
+		try {
+			
+			OfferEntity offer = offerRepository.findById(id).orElse(null);
+			
+			return offer == null ? 
+					new ResponseEntity<RESTError>	(new RESTError(1, "Offer not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<OfferEntity>	(offer, 								HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 	
 	
-	// T2 3.9
+	// T2 3.7 (izmena u T6 2.2)
 	@RequestMapping(method = RequestMethod.GET, value ="/findByPrice/{lowerPrice}/and/{upperPrice}")
-	public List<OfferEntity> getByRange(@PathVariable Integer lowerPrice, @PathVariable Integer upperPrice) {
+	public ResponseEntity<?> getByRange(@PathVariable Double lowerPrice, @PathVariable Double upperPrice) {
 		
-		List<OfferEntity> offers = (List<OfferEntity>) offerRepository.findAll();
-		
-		// ovo sigurno moze preko upita u OfferRepository-ju ali ne znam kako...
-		return offers.stream()
-				.filter(o -> lowerPrice <= o.getActPrice() && o.getActPrice() < upperPrice)
-				.collect(Collectors.toList());
+		try {
+			
+			String hql = "SELECT o from OfferEntity o WHERE o.actPrice BETWEEN :lowerX AND :upperX";
+			
+			Query query = em.createQuery(hql);
+			query.setParameter("lowerX", lowerPrice);
+			query.setParameter("upperX", upperPrice);
+			
+			List<OfferEntity> offers = query.getResultList();
+			
+			return offers.isEmpty() ? 
+					new ResponseEntity<RESTError>(
+							new RESTError(1, "No offers that match criteria."), 
+							HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<List<OfferEntity>>(
+							offers, 
+							HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 	
 	
@@ -101,6 +150,8 @@ public class OfferController {
 
 
 	// T2 3.5 (izmena u T3)
+	// TODO azurirati sve PUT metode da budu u skladu sa novim POST metodima
+	// TODO dodati ResponseEntity
 	@RequestMapping(method = RequestMethod.PUT, value = "/{id}/{categoryId}/seller/{sellerId}")
 	public OfferEntity changeOffer(@PathVariable Integer id, @PathVariable Integer categoryId, @PathVariable Integer sellerId, @RequestBody ObjectNode objectNode) {
 		
@@ -175,15 +226,24 @@ public class OfferController {
 	// =-=-=-= DELETE =-=-=-=
 	
 	
-	// T2 3.6
-	@RequestMapping(method = RequestMethod.DELETE, value ="/{id}")
-	public OfferEntity delete(@PathVariable Integer id) {
+	// T2 3.6 (izmena u T6 2.2)
+	@RequestMapping(method = RequestMethod.DELETE, value = "/{id}")
+	public ResponseEntity<?> delete(@PathVariable Integer id) {
 		
-		OfferEntity offer = offerRepository.findById(id).orElse(null);
-		if (offer == null) return null;
-		
-		offerRepository.delete(offer);
-		
-		return offer;
+		try {
+			
+			OfferEntity offer = offerRepository.findById(id).orElse(null);
+			
+			offerRepository.delete(offer);
+
+			return offer == null ? 
+					new ResponseEntity<RESTError>	(new RESTError(1, "Offer not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<OfferEntity>	(offer, 								HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 }

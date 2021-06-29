@@ -12,25 +12,36 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Version;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonView;
+
+import security.Views;
+
 @Entity
 public class VoucherEntity {
 
 	
 	@Id
+	@JsonView(Views.Public.class)
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	protected Integer id;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
 	protected LocalDate expirationDate;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Admin.class)
 	protected boolean isUsed;
 	
 	@ManyToOne(cascade = CascadeType.REFRESH)
+	@JsonView(Views.Private.class)
 	@JoinColumn(name = "offer")
 	protected OfferEntity offer;
 	
 	@ManyToOne(cascade = CascadeType.REFRESH)
+	@JsonView(Views.Private.class)
 	@JoinColumn(name = "user")
 	protected UserEntity user;
 	

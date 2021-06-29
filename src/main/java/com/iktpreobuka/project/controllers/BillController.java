@@ -22,17 +22,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.iktpreobuka.project.controllers.dto.BillRegisterDTO;
+import com.iktpreobuka.project.controllers.util.RESTError;
 import com.iktpreobuka.project.entities.BillEntity;
 import com.iktpreobuka.project.entities.CategoryEntity;
 import com.iktpreobuka.project.entities.OfferEntity;
 import com.iktpreobuka.project.entities.UserEntity;
-import com.iktpreobuka.project.enums.Role;
 import com.iktpreobuka.project.repositories.BillRepository;
 import com.iktpreobuka.project.repositories.CategoryRepository;
 import com.iktpreobuka.project.repositories.OfferRepository;
 import com.iktpreobuka.project.repositories.UserRepository;
+
+import security.Views;
 
 @RestController
 @RequestMapping("/api/v1/project/bills")
@@ -145,64 +149,112 @@ public class BillController {
 	// =-=-=-= GET =-=-=-=-=
 	
 	
-	// T3 3.3
-	@RequestMapping(method = RequestMethod.GET)
-	public List<BillEntity> getAllBills() {
-		return (List<BillEntity>) billRepository.findAll();
+	// T6 1.5, 1.6, 1.7, 1.9
+	@RequestMapping(method = RequestMethod.GET, value = "/")
+	public ResponseEntity<?> getAll() {
+		return new ResponseEntity<List<BillEntity>>((List<BillEntity>) billRepository.findAll(), HttpStatus.OK);
 	}
 	
 	
-	// T3 3.7
+	// T6 1.5, 1.6, 1.7, 1.9
+	@JsonView(Views.Public.class)
+	@RequestMapping(method = RequestMethod.GET, path = "/public")
+	public ResponseEntity<?> getAllPublic() {
+		return new ResponseEntity<List<BillEntity>>((List<BillEntity>) billRepository.findAll(), HttpStatus.OK);
+	}
+	
+	
+	// T6 1.5, 1.6, 1.7, 1.9
+	@JsonView(Views.Private.class)
+	@RequestMapping(method = RequestMethod.GET, value = "/private")
+	public ResponseEntity<?> getAllPrivate() {
+		return new ResponseEntity<List<BillEntity>>((List<BillEntity>) billRepository.findAll(), HttpStatus.OK);
+	}
+	
+
+	// T6 1.5, 1.6, 1.7, 1.9
+	@JsonView(Views.Admin.class)
+	@RequestMapping(method = RequestMethod.GET, value = "/admin")
+	public ResponseEntity<?> getAllAdmin() {
+		return new ResponseEntity<List<BillEntity>>((List<BillEntity>) billRepository.findAll(), HttpStatus.OK);
+	}
+	
+	
+	// T3 3.7 (izmena u T6 2.2)
 	@RequestMapping(method = RequestMethod.GET, value = "/findByBuyer/{buyerId}")
-	public List<BillEntity> getAllBillsByBuyer(@PathVariable Integer buyerId) {
+	public ResponseEntity<?> getAllBillsByBuyer(@PathVariable Integer buyerId) {
 		
-		UserEntity buyer = userRepository.findById(buyerId).orElse(null);
-		if (buyer == null) return null;
-		
-		List<BillEntity> bills = billRepository.findByUser(buyer);
-		
-		return bills;
+		try {
+			
+			UserEntity buyer = userRepository.findById(buyerId).orElse(null);
+			
+			return buyer == null ? 
+					new ResponseEntity<RESTError>			(new RESTError(1, "Buyer not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<List<BillEntity>>	(billRepository.findByUser(buyer), 		HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 	
 	
-	// T3 3.8
+	// T3 3.8 (izmena u T6 2.2)
 	@RequestMapping(method = RequestMethod.GET, value = "/findByCategory/{categoryId}")
-	public List<BillEntity> getAllBillsByCategory(@PathVariable Integer categoryId) {
+	public ResponseEntity<?> getAllBillsByCategory(@PathVariable Integer categoryId) {
 		
-		CategoryEntity category = categoryRepository.findById(categoryId).orElse(null);
-		if (category == null) return null;
-		
-		String hql = "select b from BillEntity b where b.offer.category = :catX";
-		
-		Query query = em.createQuery(hql);
-		query.setParameter("catX", category);
-		
-		List<BillEntity> bills = query.getResultList();
-		
-		return bills;
+		try {
+			
+			CategoryEntity category = categoryRepository.findById(categoryId).orElse(null);
+			
+			if (category == null) {
+				
+				return new ResponseEntity<RESTError>(new RESTError(1, "Category not found."), HttpStatus.NOT_FOUND);
+			} else {
+				
+				String hql = "select b from BillEntity b where b.offer.category = :catX";
+				
+				Query query = em.createQuery(hql);
+				query.setParameter("catX", category);
+				
+				List<BillEntity> bills = query.getResultList();
+				
+				return new ResponseEntity<List<BillEntity>>(bills, HttpStatus.OK);
+			}
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 	
 	
-	// T3 3.9
+	// T3 3.9 (izmena u T6 2.2)
 	@RequestMapping(method = RequestMethod.GET, value = "/findByDate/{startDate}/and/{endDate}")
-	public List<BillEntity> getAllBillsBetweenDates(@PathVariable String startDate, @PathVariable String endDate) {
+	public ResponseEntity<?> getAllBillsBetweenDates(@PathVariable String startDate, @PathVariable String endDate) {
 		
-		DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-		
-		LocalDate start = LocalDate.parse(startDate, dateFormat);
-		LocalDate end = LocalDate.parse(endDate, dateFormat);
-		
-		Date s = Date.valueOf(start);
-		Date e = Date.valueOf(end);
-		
-		String hql = "select b from BillEntity b where b.billCreated between :startX and :endX";
-		Query q = em.createQuery(hql);
-		q.setParameter("startX", s);
-		q.setParameter("endX", e);
-		
-		List<BillEntity> bills = q.getResultList();
-		
-		return bills;
+		try {
+			
+			DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+			
+			String hql = "select b from BillEntity b where b.billCreated between :startX and :endX";
+			Query q = em.createQuery(hql);
+			q.setParameter("startX", 	LocalDate.parse(startDate, dateFormat));
+			q.setParameter("endX", 		LocalDate.parse(endDate, dateFormat));
+			
+			List<BillEntity> bills = q.getResultList();
+			
+			return bills.isEmpty() ? 
+					new ResponseEntity<RESTError>			(new RESTError(1, "No bills found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<List<BillEntity>>	(bills, 								HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 	
 	
@@ -211,6 +263,7 @@ public class BillController {
 	
 	// T3 3.6 (izmena u T3 5.2)
 	// TODO azurirati sve PUT metode da budu u skladu sa novim POST metodima
+	// TODO dodati ResponseEntity
 	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
 	public BillEntity changeBill(@PathVariable Integer id, @RequestBody ObjectNode objectNode) {
 		
@@ -243,13 +296,22 @@ public class BillController {
 	
 	// T3 3.6
 	@RequestMapping(method = RequestMethod.DELETE, value ="/{id}")
-	public BillEntity delete(@PathVariable Integer id) {
+	public ResponseEntity<?> delete(@PathVariable Integer id) {
 		
-		BillEntity bill = billRepository.findById(id).orElse(null);
-		if (bill == null) return null;
+		try {
 		
-		billRepository.delete(bill);
-		
-		return bill;
+			BillEntity bill = billRepository.findById(id).orElse(null);
+			
+			billRepository.delete(bill);
+			
+			return bill == null ? 
+					new ResponseEntity<RESTError>	(new RESTError(1, "Bill not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<BillEntity>	(bill, 									HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 }

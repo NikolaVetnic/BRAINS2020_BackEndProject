@@ -1,4 +1,4 @@
-package com.iktpreobuka.project.enums;
+package com.iktpreobuka.project.entities.enums;
 
 public enum OfferStatus {
 

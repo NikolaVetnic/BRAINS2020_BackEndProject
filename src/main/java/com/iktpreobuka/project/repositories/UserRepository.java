@@ -1,6 +1,7 @@
 package com.iktpreobuka.project.repositories;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.repository.CrudRepository;
 
@@ -11,5 +12,5 @@ public interface UserRepository extends CrudRepository<UserEntity, Integer> {
 	List<UserEntity> findByFirstName(String firstName);
 	List<UserEntity> findByLastName(String lastName);
 	
-	UserEntity findByUsername(String username);
+	Optional<UserEntity> findByUsername(String username);
 }

@@ -16,20 +16,26 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonView;
+
+import security.Views;
 
 @Entity
 public class CategoryEntity {
 
 	
 	@Id
+	@JsonView(Views.Public.class)
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	protected Integer id;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@NotBlank(message = "Category name must be provided.")
 	protected String name;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@NotBlank(message = "Category description must be provided.")
 	@Size(max=30, message = "Category description must be under {max} characters long.")
 	protected String description;

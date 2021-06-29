@@ -19,11 +19,18 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.iktpreobuka.project.controllers.util.RESTError;
+import com.iktpreobuka.project.entities.BillEntity;
+import com.iktpreobuka.project.entities.CategoryEntity;
+import com.iktpreobuka.project.entities.OfferEntity;
 import com.iktpreobuka.project.entities.UserEntity;
-import com.iktpreobuka.project.enums.Role;
+import com.iktpreobuka.project.entities.enums.Role;
 import com.iktpreobuka.project.repositories.UserRepository;
 import com.iktpreobuka.project.utils.UserCustomValidator;
+
+import security.Views;
 
 @RestController
 @RequestMapping("/api/v1/project/users")
@@ -68,24 +75,74 @@ public class UserController {
 	// =-=-=-= GET =-=-=-=
 	
 	
-	// T2 1.3
-	@RequestMapping(method = RequestMethod.GET)
-	public List<UserEntity> getAllUsers() {
-		return (List<UserEntity>) userRepository.findAll();
+	// T6 1.5, 1.6, 1.7
+	@RequestMapping(method = RequestMethod.GET, value = "/")
+	public ResponseEntity<?> getAll() {
+		return new ResponseEntity<List<UserEntity>>((List<UserEntity>) userRepository.findAll(), HttpStatus.OK);
 	}
 	
 	
-	// T2 1.4
-	@RequestMapping(method = RequestMethod.GET, value ="/{id}")
-	public UserEntity getById(@PathVariable Integer id) {
-		return userRepository.findById(id).orElse(null);
+	// T6 1.5, 1.6, 1.7
+	@JsonView(Views.Public.class)
+	@RequestMapping(method = RequestMethod.GET, path = "/public")
+	public ResponseEntity<?> getAllPublic() {
+		return new ResponseEntity<List<UserEntity>>((List<UserEntity>) userRepository.findAll(), HttpStatus.OK);
 	}
 	
 	
-	// T2 1.10
-	@RequestMapping(method = RequestMethod.GET, value ="/by-username/{username}")
-	public UserEntity getByUsername(@PathVariable String username) {		
-		return userRepository.findByUsername(username);
+	// T6 1.5, 1.6, 1.7
+	@JsonView(Views.Private.class)
+	@RequestMapping(method = RequestMethod.GET, value = "/private")
+	public ResponseEntity<?> getAllPrivate() {
+		return new ResponseEntity<List<UserEntity>>((List<UserEntity>) userRepository.findAll(), HttpStatus.OK);
+	}
+	
+
+	// T6 1.5, 1.6, 1.7
+	@JsonView(Views.Admin.class)
+	@RequestMapping(method = RequestMethod.GET, value = "/admin")
+	public ResponseEntity<?> getAllAdmin() {
+		return new ResponseEntity<List<UserEntity>>((List<UserEntity>) userRepository.findAll(), HttpStatus.OK);
+	}
+	
+	
+	// T2 1.4 (izmena u T6 2.2)
+	@RequestMapping(method = RequestMethod.GET, value ="/{id}/")
+	public ResponseEntity<?> getById(@PathVariable Integer id) {
+		
+		try {
+			
+			UserEntity user = userRepository.findById(id).orElse(null);
+			
+			return user == null ? 
+					new ResponseEntity<RESTError>	(new RESTError(1, "User not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<UserEntity>	(user, 									HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
+	
+	// T2 1.10 (izmena u T6 2.2)
+	@RequestMapping(method = RequestMethod.GET, value ="/{username}")
+	public ResponseEntity<?> getByUsername(@PathVariable String username) {
+		
+		try {
+			
+			UserEntity user = userRepository.findByUsername(username).orElse(null);
+			
+			return user == null ? 
+					new ResponseEntity<RESTError>	(new RESTError(1, "User not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<UserEntity>	(user, 									HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 
 
@@ -93,6 +150,8 @@ public class UserController {
 	
 	
 	// T2 1.6
+	// TODO azurirati sve PUT metode da budu u skladu sa novim POST metodima
+	// TODO dodati ResponseEntity
 	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
 	public UserEntity changeUser(@PathVariable Integer id, @RequestBody ObjectNode objectNode) {
 		
@@ -154,15 +213,24 @@ public class UserController {
 	// =-=-=-= DELETE =-=-=-=
 	
 	
-	// T2 1.9
+	// T2 1.9 (izmena u T6 2.2)
 	@RequestMapping(method = RequestMethod.DELETE, value ="/{id}")
-	public UserEntity delete(@PathVariable Integer id) {
+	public ResponseEntity<?> delete(@PathVariable Integer id) {
 		
-		UserEntity user = userRepository.findById(id).orElse(null);
-		if (user == null) return null;
+		try {
 		
-		userRepository.delete(user);
-		
-		return user;
+			UserEntity user = userRepository.findById(id).orElse(null);
+			
+			userRepository.delete(user);
+			
+			return user == null ? 
+					new ResponseEntity<RESTError>	(new RESTError(1, "User not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<UserEntity>	(user, 									HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 }

@@ -21,53 +21,70 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.iktpreobuka.project.enums.OfferStatus;
+import com.fasterxml.jackson.annotation.JsonView;
+import com.iktpreobuka.project.entities.enums.OfferStatus;
+
+import security.Views;
 
 @Entity
 public class OfferEntity {
 
 	
 	@Id
+	@JsonView(Views.Public.class)
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	protected Integer id;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@NotBlank(message = "Name must be provided.")
 	protected String name;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@NotBlank(message = "Description must be provided.")
 	@Size(min=5, max=20, message = "Description name must be between {min} and {max} characters long.")
 	protected String description;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
 	protected LocalDate created;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
 	protected LocalDate expires;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@Min(value=1, message = "Regular price must be greater than 1.")
 	protected Double regPrice;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@Min(value=1, message = "Action price must be greater than 1.")
 	protected Double actPrice;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@NotBlank(message = "Image path must be provided.")
 	protected String imgPath;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@Min(value=1, message = "Number available must be greater than 0.")
 	protected Integer numAvailable;
 	
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@Min(value=0, message = "Number bought must be equal to or greater than 0.")
 	protected Integer numBought;
 
 	@Column(nullable = false)
+	@JsonView(Views.Public.class)
 	@Enumerated(EnumType.STRING)
 	protected OfferStatus status;
 	
@@ -76,10 +93,12 @@ public class OfferEntity {
 	// fetch = FetchType.LAZY - pravilo problem u @ManyToOne zagradi
 	
 	@ManyToOne(cascade = CascadeType.REFRESH)
+	@JsonView(Views.Public.class)
 	@JoinColumn(name = "category")
 	private CategoryEntity category;
 	
 	@ManyToOne(cascade = CascadeType.REFRESH)
+	@JsonView(Views.Public.class)
 	@JoinColumn(name = "user")
 	private UserEntity user;
 	

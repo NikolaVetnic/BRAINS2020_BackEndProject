@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Past;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class BillRegisterDTO {
@@ -12,6 +13,7 @@ public class BillRegisterDTO {
 	@Past
 	@JsonProperty("billCreated")
 	@NotNull(message = "Date created must be provided.")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
 	private LocalDate billCreated;
 	
 	public BillRegisterDTO() {
