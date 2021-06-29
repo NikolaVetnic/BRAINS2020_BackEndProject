@@ -19,10 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.iktpreobuka.project.controllers.util.RESTError;
-import com.iktpreobuka.project.entities.BillEntity;
 import com.iktpreobuka.project.entities.CategoryEntity;
-import com.iktpreobuka.project.entities.UserEntity;
 import com.iktpreobuka.project.repositories.CategoryRepository;
+import com.iktpreobuka.project.services.BillService;
+import com.iktpreobuka.project.services.OfferService;
 
 import security.Views;
 
@@ -33,6 +33,14 @@ public class CategoryController {
 	
 	@Autowired
 	private CategoryRepository categoryRepository;
+	
+	
+	@Autowired
+	private BillService billService;
+	
+	
+	@Autowired
+	private OfferService offerService;
 	
 	
 	// =-=-=-= POST =-=-=-=
@@ -126,7 +134,22 @@ public class CategoryController {
 	public ResponseEntity<?> delete(@PathVariable Integer id) {
 		
 		try {
+
+			if (offerService.findNonExpired().stream()
+					.filter(o -> o.getCategory() != null)
+					.map(o -> o.getCategory().getId())
+					.distinct()
+					.anyMatch(i -> i == id))
+				throw new Exception("Non expired offers present in category.");
 			
+			if (billService.findNonPaid().stream()
+					.filter(b -> b.getOffer() != null)
+					.filter(b -> b.getOffer().getCategory() != null)
+					.map(b -> b.getOffer().getCategory().getId())
+					.distinct()
+					.anyMatch(i -> i == id))
+				throw new Exception("Non paid bills present in category.");
+				
 			CategoryEntity category = categoryRepository.findById(id).orElse(null);
 			
 			categoryRepository.delete(category);

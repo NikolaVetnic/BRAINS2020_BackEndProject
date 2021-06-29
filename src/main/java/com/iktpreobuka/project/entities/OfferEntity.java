@@ -134,7 +134,7 @@ public class OfferEntity {
 
 	public Integer getId() 						{ return id; 			}
 	public String getName() 					{ return name; 			}
-	public String getDesc() 					{ return description; 	}
+	public String getDescription() 				{ return description; 	}
 	public LocalDate getCreated() 				{ return created; 		}
 	public LocalDate getExpires() 				{ return expires; 		}
 	public Double getRegPrice() 				{ return regPrice; 		}
@@ -145,7 +145,6 @@ public class OfferEntity {
 	public OfferStatus getStatus() 				{ return status; 		}
 	public CategoryEntity getCategory() 		{ return category; 		}
 	public UserEntity getUser() 				{ return user; 			}
-	public String getDescription() 				{ return description; 	}
 	public List<BillEntity> getBills() 			{ return bills; 		}
 	public List<VoucherEntity> getVouchers() 	{ return vouchers; 		}
 

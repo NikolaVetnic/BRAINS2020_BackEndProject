@@ -15,16 +15,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.iktpreobuka.project.controllers.util.RESTError;
-import com.iktpreobuka.project.entities.BillEntity;
 import com.iktpreobuka.project.entities.CategoryEntity;
 import com.iktpreobuka.project.entities.OfferEntity;
 import com.iktpreobuka.project.entities.UserEntity;
@@ -33,6 +34,8 @@ import com.iktpreobuka.project.entities.enums.Role;
 import com.iktpreobuka.project.repositories.CategoryRepository;
 import com.iktpreobuka.project.repositories.OfferRepository;
 import com.iktpreobuka.project.repositories.UserRepository;
+import com.iktpreobuka.project.services.FileHandler;
+import com.iktpreobuka.project.services.OfferService;
 
 import security.Views;
 
@@ -56,16 +59,33 @@ public class OfferController {
 	@Autowired
 	private CategoryRepository categoryRepository;
 	
+
+	@Autowired
+	private FileHandler fileHandler;
+	
+	
+	@Autowired
+	private OfferService offerService;
+	
 	
 	// =-=-=-= POST =-=-=-=
 	
 	
 	// T6 1.3
 	@RequestMapping(method = RequestMethod.POST, value = "/{categoryId}/seller/{sellerId}")
-	public ResponseEntity<?> createOffer(@Valid @RequestBody OfferEntity offer, BindingResult result) {
+	public ResponseEntity<?> createOffer(@PathVariable Integer categoryId, @PathVariable Integer sellerId, @Valid @RequestBody OfferEntity offer, BindingResult result) {
+		
+		CategoryEntity category = categoryRepository.findById(categoryId).get();
+		if (category == null) return null;
+		
+		UserEntity user = userRepository.findById(sellerId).get();
+		if (user == null) return null;
 		
 		if (result.hasErrors())
 			return new ResponseEntity<>(createErrorMessage(result), HttpStatus.BAD_REQUEST);
+		
+		offer.setCategory(category);
+		offer.setUser(user);
 		
 		offerRepository.save(offer);
 		
@@ -75,6 +95,22 @@ public class OfferController {
 	
 	private String createErrorMessage(BindingResult result) {
 		return result.getAllErrors().stream().map(ObjectError::getDefaultMessage).collect(Collectors.joining(" "));
+	}
+	
+	
+	// T4 3.2
+	@PostMapping(value = "/uploadImage/{id}")
+	public ResponseEntity<?> uploadSingleFileExample4(@PathVariable Integer id, @RequestBody MultipartFile file) {
+		
+		OfferEntity offer = offerRepository.findById(id).get();
+		if (offer == null) 
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Offer #" + id + " does not exist."), HttpStatus.BAD_REQUEST);
+		
+		offer.setImgPath(file.getOriginalFilename());
+		offerRepository.save(offer);
+		
+		return new ResponseEntity<OfferEntity>(offer, HttpStatus.OK);
 	}
 	
 	
@@ -143,6 +179,13 @@ public class OfferController {
 					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
+	}
+	
+	
+	// T4 3.1
+	@RequestMapping(method = RequestMethod.GET, value = "nonExpired")
+	public ResponseEntity<?> getNonExpired() {
+		return new ResponseEntity<List<OfferEntity>>((List<OfferEntity>) offerService.findNonExpired(), HttpStatus.OK);
 	}
 	
 	
@@ -220,6 +263,14 @@ public class OfferController {
 		offerRepository.save(offer);
 		
 		return offer;
+	}
+	
+	
+	// T4 2.1
+	@RequestMapping(method = RequestMethod.PUT, value = "/{id}/{numAvailable}/{numBought}")
+	public OfferEntity changeNumAvailableAndNumBought(@PathVariable Integer id, @PathVariable Integer numAvailable, @PathVariable Integer numBought) {
+		
+		return offerService.changeNumAvailableAndNumBought(id, numAvailable, numBought);
 	}
 	
 	

@@ -62,5 +62,5 @@ public class VoucherEntity {
 	public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }
 	public void setUsed(boolean isUsed) 					{ this.isUsed = isUsed; 				}
 	public void setOffer(OfferEntity offer) 				{ this.offer = offer; 					}
-	public void setUser(UserEntity user) 					{ this.user = user; 					}	
+	public void setUser(UserEntity user) 					{ this.user = user; 					}
 }

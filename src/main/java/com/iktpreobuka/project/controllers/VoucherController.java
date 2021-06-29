@@ -1,6 +1,5 @@
 package com.iktpreobuka.project.controllers;
 
-import java.sql.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -26,7 +25,6 @@ import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.iktpreobuka.project.controllers.dto.VoucherRegisterDTO;
 import com.iktpreobuka.project.controllers.util.RESTError;
-import com.iktpreobuka.project.entities.BillEntity;
 import com.iktpreobuka.project.entities.OfferEntity;
 import com.iktpreobuka.project.entities.UserEntity;
 import com.iktpreobuka.project.entities.VoucherEntity;
@@ -34,6 +32,7 @@ import com.iktpreobuka.project.entities.enums.Role;
 import com.iktpreobuka.project.repositories.OfferRepository;
 import com.iktpreobuka.project.repositories.UserRepository;
 import com.iktpreobuka.project.repositories.VoucherRepository;
+import com.iktpreobuka.project.services.VoucherService;
 
 import security.Views;
 
@@ -44,18 +43,22 @@ public class VoucherController {
 	
 	@PersistenceContext
 	private EntityManager em;
+	
+	
+	@Autowired
+	private OfferRepository offerRepository;
 
+	
+	@Autowired
+	private UserRepository userRepository;
+	
 	
 	@Autowired
 	private VoucherRepository voucherRepository;
 
 	
 	@Autowired
-	private UserRepository userRepository;
-
-	
-	@Autowired
-	private OfferRepository offerRepository;
+	private VoucherService voucherService;
 	
 	
 	private static final String[] ERRORS = { 
@@ -82,6 +85,25 @@ public class VoucherController {
 		voucherRepository.save(newVoucher);
 		
 		return new ResponseEntity<>(newVoucher, HttpStatus.CREATED);
+	}
+	
+	
+	@RequestMapping(method = RequestMethod.POST, value = "/{billId}")
+	public ResponseEntity<?> createVoucherWithBill(@PathVariable Integer billId) {
+		
+		try {
+			
+			VoucherEntity voucher = voucherService.createVoucherWithBill(billId);
+			
+			return voucher == null ? 
+					new ResponseEntity<RESTError>		(new RESTError(1, "User not found."), 	HttpStatus.NOT_FOUND) : 
+					new ResponseEntity<VoucherEntity>	(voucher, 								HttpStatus.OK);
+			
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 	}
 		
 		
@@ -220,6 +242,7 @@ public class VoucherController {
 	
 	
 	// T3 4.9 (izmena u T6 2.2)
+	@SuppressWarnings("unchecked")
 	@RequestMapping(method = RequestMethod.GET, value = "/findNonExpiredVoucher")
 	public ResponseEntity<?> getNonExpiredVouchers() {
 		

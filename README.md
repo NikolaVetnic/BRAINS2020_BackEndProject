@@ -1,6 +1,6 @@
 # BRAINS2020_BackEndProject
 
-Uradjeno do T4, zakljucno sa T3.
+Uradjeno do T07 (do tokena).
 
 Ostali projekti:
 - [BackEnd projekat radjen tokom nastave](https://github.com/NikolaVetnic/BRAINS2020_BackEndProject)

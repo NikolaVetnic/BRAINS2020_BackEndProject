@@ -1,8 +1,8 @@
 package com.iktpreobuka.project.controllers;
 
-import java.sql.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.iktpreobuka.project.controllers.dto.BillRegisterDTO;
@@ -31,10 +30,17 @@ import com.iktpreobuka.project.entities.BillEntity;
 import com.iktpreobuka.project.entities.CategoryEntity;
 import com.iktpreobuka.project.entities.OfferEntity;
 import com.iktpreobuka.project.entities.UserEntity;
+import com.iktpreobuka.project.entities.VoucherEntity;
+import com.iktpreobuka.project.entities.dto.ReportDTO;
+import com.iktpreobuka.project.entities.dto.ReportItem;
 import com.iktpreobuka.project.repositories.BillRepository;
 import com.iktpreobuka.project.repositories.CategoryRepository;
 import com.iktpreobuka.project.repositories.OfferRepository;
 import com.iktpreobuka.project.repositories.UserRepository;
+import com.iktpreobuka.project.repositories.VoucherRepository;
+import com.iktpreobuka.project.services.BillService;
+import com.iktpreobuka.project.services.OfferService;
+import com.iktpreobuka.project.services.VoucherService;
 
 import security.Views;
 
@@ -61,6 +67,22 @@ public class BillController {
 	
 	@Autowired
 	private CategoryRepository categoryRepository;
+
+	
+	@Autowired
+	private VoucherRepository voucherRepository;
+
+	
+	@Autowired
+	private BillService billService;
+	
+	
+	@Autowired
+	private OfferService offerService;
+
+	
+	@Autowired
+	private VoucherService voucherService;
 	
 	
 	private static final String[] ERRORS = { 
@@ -90,7 +112,7 @@ public class BillController {
 	}
 	
 	
-	// T6 1.4
+	// T4 2.2 (izmena u T6 1.4)
 	@RequestMapping(method = RequestMethod.POST, value = "/{offerId}/buyer/{buyerId}")
 	public ResponseEntity<?> createBillWithOfferAndBuyer(
 			@PathVariable Integer offerId, @PathVariable Integer buyerId, @Valid @RequestBody BillRegisterDTO billDTO, 
@@ -120,8 +142,7 @@ public class BillController {
 			return new ResponseEntity<>(sb.toString() + " " + createErrorMessage(result), HttpStatus.BAD_REQUEST);
 		}
 		
-		offer.setNumAvailable(offer.getNumAvailable() - 1);
-		offer.setNumBought(offer.getNumBought() + 1);
+		offerService.changeNumAvailableAndNumBought(offer.getId(), offer.getNumAvailable() - 1, offer.getNumBought() + 1);
 		
 		// ??? da li je neophodno ???
 		offerRepository.save(offer);
@@ -239,12 +260,8 @@ public class BillController {
 			
 			DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 			
-			String hql = "select b from BillEntity b where b.billCreated between :startX and :endX";
-			Query q = em.createQuery(hql);
-			q.setParameter("startX", 	LocalDate.parse(startDate, dateFormat));
-			q.setParameter("endX", 		LocalDate.parse(endDate, dateFormat));
-			
-			List<BillEntity> bills = q.getResultList();
+			List<BillEntity> bills = billService.findByPeriod(
+					LocalDate.parse(startDate, dateFormat), LocalDate.parse(endDate, dateFormat));
 			
 			return bills.isEmpty() ? 
 					new ResponseEntity<RESTError>			(new RESTError(1, "No bills found."), 	HttpStatus.NOT_FOUND) : 
@@ -258,10 +275,132 @@ public class BillController {
 	}
 	
 	
+	// T4 3.1
+	@RequestMapping(method = RequestMethod.GET, value = "nonPaid")
+	public ResponseEntity<?> getNonExpired() {
+		return new ResponseEntity<List<BillEntity>>((List<BillEntity>) billService.findNonPaid(), HttpStatus.OK);
+	}
+	
+	
+	// T4 3.3
+	@RequestMapping(method = RequestMethod.PUT, value = "/offer/{id}")
+	public ResponseEntity<?> cancelAllForOffer(@PathVariable Integer id) {
+		
+		try {
+			
+			OfferEntity offer = offerRepository.findById(id)
+					.orElseThrow(() -> new Exception("Offer #" + id + " does not exist."));
+			
+			List<BillEntity> bills = billRepository.findByOffer(offer);
+			
+			if (bills.isEmpty()) {
+				
+				return new ResponseEntity<RESTError>(new RESTError(1, "No bills found."), HttpStatus.NOT_FOUND);
+			} else {
+				
+				for (BillEntity b : bills)
+					b.setPaymentCanceled(true);
+				
+				return new ResponseEntity<List<BillEntity>>(bills, HttpStatus.OK);				
+			}
+
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
+	
+	// T5 3.4
+	@RequestMapping(method = RequestMethod.GET, value = "/generateReportByDate/{startDate}/and/{endDate}")
+	public ResponseEntity<?> generateReportByPeriod(@PathVariable String startDate, @PathVariable String endDate) {
+		
+		try {
+			
+			DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+			
+			List<ReportItem> items = new ArrayList<ReportItem>();
+			
+			List<BillEntity> bills = billService.findByPeriod(LocalDate.parse(startDate, dateFormat), LocalDate.parse(endDate, dateFormat));
+			for (BillEntity bill : bills) {
+				
+				ReportItem reportItem = new ReportItem();
+				
+				reportItem.setDate(bill.getBillCreated());
+				reportItem.setIncome(bill.getOffer() != null ? bill.getOffer().getRegPrice() : 0);
+				reportItem.setNumberOfOffers(bill.getOffer() != null ? bill.getOffer().getNumBought() : 0);
+				
+				System.out.println(reportItem);
+				
+				items.add(reportItem);
+			}
+			
+			return new ResponseEntity<List<ReportItem>>(items, HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
+	
+	// T5 3.5
+	@RequestMapping(method = RequestMethod.GET, value = "/generateReportByDate/{startDate}/and/{endDate}/category/{categoryId}")
+	public ResponseEntity<?> generateReportByPeriodAndCategory(
+			@PathVariable String startDate, @PathVariable String endDate, @PathVariable Integer categoryId) {
+		
+		try {
+			
+			DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+			
+			List<ReportItem> items = new ArrayList<ReportItem>();
+
+			CategoryEntity category = categoryRepository.findById(categoryId)
+					.orElseThrow(() -> new Exception("Category #" + categoryId + " does not exist."));
+			
+			List<BillEntity> bills = billService.findByPeriod(
+					LocalDate.parse(startDate, dateFormat), 
+					LocalDate.parse(endDate, dateFormat)).stream()
+							.filter(b -> b.getOffer() != null)
+							.filter(b -> b.getOffer().getCategory().equals(category))
+							.collect(Collectors.toList());
+			
+			for (BillEntity bill : bills) {
+				
+				ReportItem reportItem = new ReportItem();
+				
+				reportItem.setDate(bill.getBillCreated());
+				reportItem.setIncome(bill.getOffer() != null ? bill.getOffer().getRegPrice() : 0);
+				reportItem.setNumberOfOffers(bill.getOffer() != null ? bill.getOffer().getNumBought() : 0);
+				
+				System.out.println(reportItem);
+				
+				items.add(reportItem);
+			}
+			
+			ReportDTO reportDTO = new ReportDTO();
+			
+			reportDTO.setCategoryName(category.getName());
+			reportDTO.setItems(items);
+			reportDTO.setSumOfIncomes(items.stream().collect(Collectors.summingDouble(ReportItem::getIncome)));
+			reportDTO.setTotalNumberOfSoldOffers((int) items.stream().count());
+			
+			return new ResponseEntity<ReportDTO>(reportDTO, HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<RESTError>(
+					new RESTError(2, "Internal server error. Error: " + e.getMessage()), 
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
+	
 	// =-=-=-= PUT =-=-=-=
 	
 	
-	// T3 3.6 (izmena u T3 5.2)
+	// T3 3.6 (izmena u T4 2.4, T3 5.2)
 	// TODO azurirati sve PUT metode da budu u skladu sa novim POST metodima
 	// TODO dodati ResponseEntity
 	@RequestMapping(method = RequestMethod.PUT, value = "/{id}")
@@ -273,10 +412,22 @@ public class BillController {
 		boolean paymentCanceled = objectNode.get("canceled").textValue().equalsIgnoreCase("yes") ? true : false;
 		boolean paymentMade = objectNode.get("made").textValue().equalsIgnoreCase("yes") ? true : false;
 		
-		if (paymentCanceled) {
+		if (paymentCanceled && !bill.getPaymentCanceled() && bill.getOffer() != null) {
 			
-			bill.getOffer().setNumAvailable(bill.getOffer().getNumAvailable() + 1);
-			bill.getOffer().setNumBought(bill.getOffer().getNumBought() - 1);
+			offerService.changeNumAvailableAndNumBought(
+					bill.getOffer().getId(), bill.getOffer().getNumAvailable() + 1, bill.getOffer().getNumBought() - 1);
+			
+			// ??? da li je neophodno ???
+			offerRepository.save(bill.getOffer());
+		}
+		
+		if (paymentMade && !bill.getPaymentMade() && bill.getOffer() != null) {
+			
+			offerService.changeNumAvailableAndNumBought(
+					bill.getOffer().getId(), bill.getOffer().getNumAvailable() - 1, bill.getOffer().getNumBought() + 1);
+			
+			VoucherEntity voucher = voucherService.createVoucherWithBill(id);
+			voucherRepository.save(voucher);
 			
 			// ??? da li je neophodno ???
 			offerRepository.save(bill.getOffer());
